@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { db } = require('../config/firebase');
+const { db, storage } = require('../config/firebase');
 const llmService = require('../services/llmService');
 const jiraService = require('../services/jiraService');
 const emailService = require('../services/emailService');
@@ -10,15 +10,65 @@ const emailService = require('../services/emailService');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 5 * 1024 * 1024 // 5MB limit per file
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
   }
 });
+
+/**
+ * Upload image to Firebase Storage
+ */
+async function uploadImageToStorage(file, bugId, type) {
+  if (!storage) {
+    throw new Error('Firebase Storage not configured');
+  }
+
+  try {
+    const bucket = storage.bucket();
+    const timestamp = Date.now();
+    const fileName = `bugs/${bugId}/${type}/${timestamp}-${file.originalname}`;
+    const fileUpload = bucket.file(fileName);
+
+    console.log(`📤 Uploading ${type} image: ${fileName}`);
+
+    // Upload file with metadata
+    await fileUpload.save(file.buffer, {
+      metadata: {
+        contentType: file.mimetype,
+      },
+      public: true,
+      validation: false
+    });
+
+    // Make the file publicly accessible
+    await fileUpload.makePublic();
+
+    // Return public URL
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    console.log(`✅ Uploaded successfully: ${publicUrl}`);
+    
+    return publicUrl;
+  } catch (error) {
+    console.error(`❌ Error uploading ${type} image:`, error.message);
+    console.error('Error details:', error);
+    throw new Error(`Failed to upload ${type} image: ${error.message}`);
+  }
+}
 
 /**
  * POST /api/bugs/submit
  * Submit a new bug report for analysis
  */
-router.post('/submit', upload.single('screenshot'), async (req, res) => {
+router.post('/submit', upload.fields([
+  { name: 'screenshots', maxCount: 5 },
+  { name: 'logImages', maxCount: 3 }
+]), async (req, res) => {
   try {
     if (!db) {
       return res.status(503).json({ 
@@ -56,17 +106,73 @@ router.post('/submit', upload.single('screenshot'), async (req, res) => {
       relatedStoryKey: relatedStoryKey || null,
       submittedBy: submittedBy || 'Anonymous',
       submittedByEmail: submittedByEmail || null,
-      status: 'analyzing',
+      status: 'uploading',
       createdAt: new Date().toISOString(),
       userStoryContext
     });
+
+    // Upload images to Firebase Storage
+    const screenshotUrls = [];
+    const logImageUrls = [];
+
+    try {
+      // Upload screenshots
+      if (req.files && req.files.screenshots) {
+        console.log(`📸 Processing ${req.files.screenshots.length} screenshot(s)...`);
+        for (const file of req.files.screenshots) {
+          try {
+            const url = await uploadImageToStorage(file, bugRef.id, 'screenshots');
+            screenshotUrls.push(url);
+          } catch (fileError) {
+            console.error(`Failed to upload screenshot ${file.originalname}:`, fileError.message);
+            // Continue with other files
+          }
+        }
+      }
+
+      // Upload log images
+      if (req.files && req.files.logImages) {
+        console.log(`📄 Processing ${req.files.logImages.length} log image(s)...`);
+        for (const file of req.files.logImages) {
+          try {
+            const url = await uploadImageToStorage(file, bugRef.id, 'logs');
+            logImageUrls.push(url);
+          } catch (fileError) {
+            console.error(`Failed to upload log image ${file.originalname}:`, fileError.message);
+            // Continue with other files
+          }
+        }
+      }
+
+      // Update bug record with image URLs
+      await db.collection('bugs').doc(bugRef.id).update({
+        screenshotUrls,
+        logImageUrls,
+        status: 'analyzing'
+      });
+
+      console.log(`✅ Updated bug ${bugRef.id} with ${screenshotUrls.length} screenshots and ${logImageUrls.length} log images`);
+
+    } catch (uploadError) {
+      console.error('Error uploading images:', uploadError);
+      await db.collection('bugs').doc(bugRef.id).update({
+        status: 'upload_failed',
+        error: uploadError.message
+      });
+      return res.status(500).json({ 
+        error: 'Failed to upload images',
+        details: uploadError.message 
+      });
+    }
 
     // Start async analysis (don't wait for completion)
     analyzeBugAsync(bugRef.id, {
       description,
       logs,
       userStoryContext,
-      submittedByEmail
+      submittedByEmail,
+      screenshotUrls,
+      logImageUrls
     });
 
     res.json({
@@ -86,13 +192,15 @@ router.post('/submit', upload.single('screenshot'), async (req, res) => {
  */
 async function analyzeBugAsync(bugId, bugData) {
   try {
-    const { description, logs, userStoryContext, submittedByEmail } = bugData;
+    const { description, logs, userStoryContext, submittedByEmail, screenshotUrls, logImageUrls } = bugData;
 
-    // Step 1: Analyze bug with LLM
+    // Step 1: Analyze bug with LLM (including images)
     const analysis = await llmService.analyzeBug({
       description,
       logs,
-      userStoryContext
+      userStoryContext,
+      screenshotUrls,
+      logImageUrls
     });
 
     // Step 2: Generate test cases

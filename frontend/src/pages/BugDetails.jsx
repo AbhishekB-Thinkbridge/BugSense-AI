@@ -125,6 +125,64 @@ export default function BugDetails() {
               Submitted by: {bug.submittedBy}
             </div>
           )}
+
+          {/* Screenshots */}
+          {bug.screenshotUrls && bug.screenshotUrls.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Bug Screenshots</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {bug.screenshotUrls.map((url, index) => (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative"
+                  >
+                    <img
+                      src={url}
+                      alt={`Screenshot ${index + 1}`}
+                      className="w-full h-40 object-cover rounded-lg border-2 border-gray-200 group-hover:border-primary-500 transition-colors cursor-pointer"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-opacity flex items-center justify-center">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">
+                        Click to enlarge
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Log Images */}
+          {bug.logImageUrls && bug.logImageUrls.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Log Screenshots</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {bug.logImageUrls.map((url, index) => (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative"
+                  >
+                    <img
+                      src={url}
+                      alt={`Log Screenshot ${index + 1}`}
+                      className="w-full h-40 object-cover rounded-lg border-2 border-gray-200 group-hover:border-primary-500 transition-colors cursor-pointer"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-opacity flex items-center justify-center">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">
+                        Click to enlarge
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -218,6 +276,15 @@ export default function BugDetails() {
             title="Root Cause Analysis"
             content={bug.analysis.rootCause}
           />
+
+          {/* Visual Analysis - if images were provided */}
+          {bug.analysis.visualAnalysis && (
+            <AnalysisSection
+              icon={<ExclamationCircleIcon className="h-6 w-6" />}
+              title="Visual Analysis from Screenshots"
+              content={bug.analysis.visualAnalysis}
+            />
+          )}
 
           {/* Suggested Fix */}
           <AnalysisSection

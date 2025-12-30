@@ -8,7 +8,9 @@ import {
   LinkIcon,
   UserIcon,
   EnvelopeIcon,
-  ArrowUpTrayIcon
+  ArrowUpTrayIcon,
+  PhotoIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 export default function SubmitBug() {
@@ -23,10 +25,54 @@ export default function SubmitBug() {
     submittedByEmail: ''
   });
   const [userStory, setUserStory] = useState(null);
+  const [screenshots, setScreenshots] = useState([]);
+  const [logImages, setLogImages] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleScreenshotChange = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter(file => {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is too large (max 5MB)`);
+        return false;
+      }
+      return true;
+    });
+
+    setScreenshots(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 screenshots
+  };
+
+  const handleLogImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter(file => {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is too large (max 5MB)`);
+        return false;
+      }
+      return true;
+    });
+
+    setLogImages(prev => [...prev, ...validFiles].slice(0, 3)); // Max 3 log images
+  };
+
+  const removeScreenshot = (index) => {
+    setScreenshots(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeLogImage = (index) => {
+    setLogImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const fetchUserStory = async () => {
@@ -58,7 +104,11 @@ export default function SubmitBug() {
 
     setLoading(true);
     try {
-      const response = await bugAPI.submitBug(formData);
+      const response = await bugAPI.submitBug({
+        ...formData,
+        screenshots,
+        logImages
+      });
       
       toast.success('Bug submitted successfully! Analysis in progress...');
       
@@ -117,6 +167,100 @@ export default function SubmitBug() {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
             placeholder="Paste any relevant console logs, error messages, or stack traces..."
           />
+
+          {/* Log Images */}
+          <div className="mt-4">
+            <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+              <PhotoIcon className="h-4 w-4 mr-2 text-gray-500" />
+              Upload Log Screenshots (Optional, Max 3)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleLogImageChange}
+              className="hidden"
+              id="log-images-upload"
+            />
+            <label
+              htmlFor="log-images-upload"
+              className="inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors"
+            >
+              <PhotoIcon className="h-5 w-5 mr-2 text-gray-400" />
+              <span className="text-sm text-gray-600">Choose log images</span>
+            </label>
+            
+            {logImages.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {logImages.map((file, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Log ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeLogImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1 truncate">{file.name}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bug Screenshots */}
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <label className="flex items-center text-lg font-semibold text-gray-900 mb-3">
+            <PhotoIcon className="h-5 w-5 mr-2 text-primary-600" />
+            Bug Screenshots (Optional, Max 5)
+          </label>
+          <p className="text-sm text-gray-600 mb-3">
+            Upload screenshots showing the bug, expected behavior, or any visual artifacts
+          </p>
+          
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleScreenshotChange}
+            className="hidden"
+            id="screenshots-upload"
+          />
+          <label
+            htmlFor="screenshots-upload"
+            className="inline-flex items-center px-6 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors"
+          >
+            <PhotoIcon className="h-5 w-5 mr-2 text-gray-400" />
+            <span className="text-sm text-gray-600">Choose screenshots</span>
+          </label>
+
+          {screenshots.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+              {screenshots.map((file, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Screenshot ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeScreenshot(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{file.name}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Related JIRA Story */}
