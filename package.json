@@ -1,0 +1,23 @@
+{
+  "name": "bugsense-ai",
+  "version": "1.0.0",
+  "description": "AI-powered bug assistant that integrates with JIRA",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": [
+    "jira",
+    "ai",
+    "bug-tracking",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
