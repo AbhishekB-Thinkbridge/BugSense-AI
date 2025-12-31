@@ -104,8 +104,11 @@ export default function SubmitBug() {
 
     setLoading(true);
     try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser')); // Assuming user info is stored in localStorage
       const response = await bugAPI.submitBug({
         ...formData,
+        submittedBy: currentUser?.name || 'Anonymous',
+        submittedByEmail: currentUser?.email || null,
         screenshots,
         logImages
       });
