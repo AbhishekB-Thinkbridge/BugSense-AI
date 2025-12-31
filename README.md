@@ -1,4 +1,4 @@
-# 🐛 BugSense AI
+# 🐛 BugSense.AI
 
 > From Bug Report to Fix-Ready Insight — Automatically
 
@@ -26,7 +26,7 @@ An AI-powered bug assistant that pulls user stories from JIRA, understands QA-re
 - **Frontend**: React 18 + Vite + TailwindCSS
 - **Backend**: Node.js + Express
 - **Database**: Firebase Firestore
-- **AI/LLM**: OpenAI GPT-4
+- **AI/LLM**: OpenAI GPT-4 / GROQ
 - **Integration**: JIRA REST API
 - **Email**: Nodemailer
 
@@ -219,8 +219,8 @@ npm run dev
 ```
 
 The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
+- Frontend: http://localhost:5173 [awaiting deployed application link]
+- Backend API: http://localhost:5000 [awaiting deployed application link]
 
 ## 📖 Usage
 
@@ -328,9 +328,6 @@ This project is licensed under the MIT License.
 - Firebase for backend services
 - All the amazing open-source libraries used in this project
 
-## 📞 Support
-
-For support, email your-email@company.com or create an issue in the repository.
 
 ---
 
