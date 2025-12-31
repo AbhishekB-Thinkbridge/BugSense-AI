@@ -408,7 +408,7 @@ export default function BugDetails() {
       {bug.status === 'completed' && bug.analysis && (
         <>
           {/* JIRA Ticket */}
-          {bug.jiraTicket && (
+          {bug.jiraTicket && !bug.userStoryContext && (
             <div className="bg-green-50 border-2 border-green-300 rounded-xl p-6 mb-6">
               <h2 className="text-xl font-bold text-green-900 mb-4 flex items-center">
                 <CheckCircleIcon className="h-6 w-6 mr-2" />
