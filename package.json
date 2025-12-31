@@ -19,5 +19,11 @@
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@ckeditor/ckeditor5-build-classic": "^41.4.2",
+    "@ckeditor/ckeditor5-react": "^11.0.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.4"
   }
 }

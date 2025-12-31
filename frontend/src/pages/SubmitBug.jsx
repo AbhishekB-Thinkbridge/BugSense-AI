@@ -146,10 +146,10 @@ export default function SubmitBug() {
             name="description"
             value={formData.description}
             onChange={handleChange}
-            rows="6"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Describe what went wrong, what you expected to happen, and any other relevant details..."
             required
+            rows={4}
+            className="w-full px-4 py-3 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300 text-lg text-gray-900 placeholder-gray-500"
+            placeholder="Describe the bug in detail..."
           />
         </div>
 
@@ -163,9 +163,9 @@ export default function SubmitBug() {
             name="logs"
             value={formData.logs}
             onChange={handleChange}
-            rows="4"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
-            placeholder="Paste any relevant console logs, error messages, or stack traces..."
+            rows={4}
+            className="w-full px-4 py-3 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300 text-lg text-gray-900 placeholder-gray-500"
+            placeholder="Paste logs or error messages (optional)"
           />
 
           {/* Log Images */}
@@ -179,16 +179,8 @@ export default function SubmitBug() {
               accept="image/*"
               multiple
               onChange={handleLogImageChange}
-              className="hidden"
-              id="log-images-upload"
+              className="block w-full text-sm text-gray-900 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300"
             />
-            <label
-              htmlFor="log-images-upload"
-              className="inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors"
-            >
-              <PhotoIcon className="h-5 w-5 mr-2 text-gray-400" />
-              <span className="text-sm text-gray-600">Choose log images</span>
-            </label>
             
             {logImages.length > 0 && (
               <div className="mt-3 grid grid-cols-3 gap-3">
@@ -229,8 +221,7 @@ export default function SubmitBug() {
             accept="image/*"
             multiple
             onChange={handleScreenshotChange}
-            className="hidden"
-            id="screenshots-upload"
+            className="block w-full text-sm text-gray-900 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300"
           />
           <label
             htmlFor="screenshots-upload"
@@ -275,8 +266,8 @@ export default function SubmitBug() {
               name="relatedStoryKey"
               value={formData.relatedStoryKey}
               onChange={handleChange}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="e.g., PROJ-123"
+              className="w-full px-4 py-3 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300 text-lg text-gray-900 placeholder-gray-500"
+              placeholder="User Story Key (optional)"
             />
             <button
               type="button"
@@ -317,8 +308,8 @@ export default function SubmitBug() {
                 name="submittedBy"
                 value={formData.submittedBy}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Your name"
+                className="w-full px-4 py-3 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300 text-lg text-gray-900 placeholder-gray-500"
+                placeholder="Your Name (optional)"
               />
             </div>
             <div>
@@ -331,8 +322,8 @@ export default function SubmitBug() {
                 name="submittedByEmail"
                 value={formData.submittedByEmail}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="your.email@company.com"
+                className="w-full px-4 py-3 bg-white border-2 border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-400 focus:border-primary-500 shadow-sm transition-all duration-300 text-lg text-gray-900 placeholder-gray-500"
+                placeholder="Your Email (optional)"
               />
             </div>
           </div>

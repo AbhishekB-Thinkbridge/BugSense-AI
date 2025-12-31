@@ -94,6 +94,12 @@ router.post('/submit', upload.fields([
     if (relatedStoryKey) {
       try {
         userStoryContext = await jiraService.fetchUserStory(relatedStoryKey);
+        // Remove undefined values from userStoryContext
+        if (userStoryContext) {
+          Object.keys(userStoryContext).forEach(
+            key => userStoryContext[key] === undefined && delete userStoryContext[key]
+          );
+        }
       } catch (error) {
         console.warn('Could not fetch user story:', error.message);
       }

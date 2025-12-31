@@ -53,6 +53,16 @@ export const bugAPI = {
   getAllBugs: async (params = {}) => {
     const response = await api.get('/bugs', { params });
     return response.data;
+  },
+
+  updateAnalysis: async (bugId, analysis) => {
+    const response = await api.put(`/bugs/${bugId}/analysis`, { analysis });
+    return response.data;
+  },
+
+  createJiraTicket: async (bugId) => {
+    const response = await api.post(`/bugs/${bugId}/create-ticket`);
+    return response.data;
   }
 };
 
