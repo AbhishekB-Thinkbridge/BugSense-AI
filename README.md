@@ -219,8 +219,8 @@ npm run dev
 ```
 
 The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
+- Frontend: http://localhost:5173 [awaiting deployed application link]
+- Backend API: http://localhost:5000 [awaiting deployed application link]
 
 ## 📖 Usage
 
