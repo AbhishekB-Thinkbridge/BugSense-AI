@@ -143,6 +143,7 @@ class LLMService {
   }
 
   async callGroq(systemPrompt, userPrompt, options = {}) {
+    // Groq doesn't support vision yet, skip images
     const response = await this.groq.chat.completions.create({
       model: options.model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
       messages: [
@@ -157,26 +158,91 @@ class LLMService {
   }
 
   async callOpenAI(systemPrompt, userPrompt, options = {}) {
-    const response = await this.openai.chat.completions.create({
-      model: options.model || process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: options.temperature || 0.3,
-      max_tokens: options.maxTokens || 2000,
-    });
+    const messages = [
+      { role: 'system', content: systemPrompt }
+    ];
 
-    return response.choices[0].message.content;
+    // If images are provided, use vision model
+    if (options.images && options.images.length > 0) {
+      const userMessage = {
+        role: 'user',
+        content: [
+          { type: 'text', text: userPrompt }
+        ]
+      };
+
+      // Add images
+      for (const imageUrl of options.images) {
+        userMessage.content.push({
+          type: 'image_url',
+          image_url: { url: imageUrl }
+        });
+      }
+
+      messages.push(userMessage);
+
+      const response = await this.openai.chat.completions.create({
+        model: options.model || 'gpt-4o-mini', // gpt-4o and gpt-4o-mini support vision
+        messages,
+        temperature: options.temperature || 0.3,
+        max_tokens: options.maxTokens || 2000,
+      });
+
+      return response.choices[0].message.content;
+    } else {
+      // Text-only
+      messages.push({ role: 'user', content: userPrompt });
+
+      const response = await this.openai.chat.completions.create({
+        model: options.model || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages,
+        temperature: options.temperature || 0.3,
+        max_tokens: options.maxTokens || 2000,
+      });
+
+      return response.choices[0].message.content;
+    }
   }
 
   async callAnthropic(systemPrompt, userPrompt, options = {}) {
+    const userContent = [];
+
+    // Add text
+    userContent.push({
+      type: 'text',
+      text: userPrompt
+    });
+
+    // Add images if provided
+    if (options.images && options.images.length > 0) {
+      for (const imageUrl of options.images) {
+        // Download image and convert to base64
+        try {
+          const axios = require('axios');
+          const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+          const base64Image = Buffer.from(imageResponse.data).toString('base64');
+          const mediaType = imageResponse.headers['content-type'] || 'image/jpeg';
+
+          userContent.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mediaType,
+              data: base64Image
+            }
+          });
+        } catch (error) {
+          console.warn(`Failed to load image ${imageUrl}:`, error.message);
+        }
+      }
+    }
+
     const response = await this.anthropic.messages.create({
       model: options.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
       max_tokens: options.maxTokens || 2000,
       system: systemPrompt,
       messages: [
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: userContent }
       ],
       temperature: options.temperature || 0.3,
     });
@@ -189,8 +255,32 @@ class LLMService {
       model: options.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash'
     });
 
-    const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
-    const result = await model.generateContent(combinedPrompt);
+    const parts = [
+      { text: `${systemPrompt}\n\n${userPrompt}` }
+    ];
+
+    // Add images if provided
+    if (options.images && options.images.length > 0) {
+      for (const imageUrl of options.images) {
+        try {
+          const axios = require('axios');
+          const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+          const base64Image = Buffer.from(imageResponse.data).toString('base64');
+          const mimeType = imageResponse.headers['content-type'] || 'image/jpeg';
+
+          parts.push({
+            inlineData: {
+              mimeType,
+              data: base64Image
+            }
+          });
+        } catch (error) {
+          console.warn(`Failed to load image ${imageUrl}:`, error.message);
+        }
+      }
+    }
+
+    const result = await model.generateContent(parts);
     const response = await result.response;
     return response.text();
   }
@@ -201,11 +291,11 @@ class LLMService {
    */
   async analyzeBug(bugInput) {
     try {
-      const { description, logs, userStoryContext } = bugInput;
+      const { description, logs, userStoryContext, screenshotUrls = [], logImageUrls = [] } = bugInput;
 
-      const systemPrompt = `You are an expert QA analyst and software engineer. Analyze bug reports and generate comprehensive, developer-ready bug tickets. Always respond with valid JSON.`;
+      const systemPrompt = `You are an expert QA analyst and software engineer. Analyze bug reports (text and images) and generate comprehensive, developer-ready bug tickets. Always respond with valid JSON.`;
 
-      const userPrompt = `
+      let userPrompt = `
 Analyze the following bug report and generate a comprehensive, developer-ready bug ticket.
 
 ${userStoryContext ? `
@@ -224,22 +314,42 @@ ${logs ? `
 ${logs}
 ` : ''}
 
+${logImageUrls.length > 0 ? `
+**Log Screenshots Provided:**
+${logImageUrls.length} image(s) showing error logs and console output.
+Please analyze these images for additional error details, stack traces, and debugging information.
+` : ''}
+
+${screenshotUrls.length > 0 ? `
+**Bug Screenshots Provided:**
+${screenshotUrls.length} image(s) showing the bug, UI state, and visual artifacts.
+Please analyze these images for visual bugs, UI inconsistencies, layout issues, and unexpected behavior.
+` : ''}
+
 Please provide a structured analysis in the following JSON format:
 {
   "summary": "Clear, concise bug title (max 100 chars)",
   "reproductionSteps": "Numbered step-by-step instructions to reproduce the bug",
-  "rootCause": "Analysis of what might be causing this bug",
+  "rootCause": "Analysis of what might be causing this bug (include insights from images if provided)",
   "affectedModule": "The specific component, module, or feature affected",
   "suggestedFix": "Technical suggestion for how to fix this issue",
   "testCases": "Jest/React Testing Library test cases to verify the fix",
   "priority": "Critical|High|Medium|Low",
-  "severity": "Blocker|Critical|Major|Minor|Trivial"
+  "severity": "Blocker|Critical|Major|Minor|Trivial",
+  "visualAnalysis": "Analysis of visual elements from screenshots (if images provided, otherwise null)"
 }
 
-Be specific, technical, and actionable. Focus on clarity for developers. Respond ONLY with valid JSON.
+Be specific, technical, and actionable. Focus on clarity for developers. 
+If screenshots are provided, analyze them for UI bugs, layout issues, error states, and visual inconsistencies.
+Respond ONLY with valid JSON.
 `;
 
-      const response = await this.callWithFallback(systemPrompt, userPrompt);
+      // Collect all images for vision analysis
+      const allImages = [...screenshotUrls, ...logImageUrls];
+
+      const response = await this.callWithFallback(systemPrompt, userPrompt, {
+        images: allImages.length > 0 ? allImages : undefined
+      });
       
       // Try to parse JSON, handle markdown code blocks
       try {

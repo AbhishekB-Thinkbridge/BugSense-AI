@@ -50,7 +50,6 @@ class JiraService {
         reproductionSteps,
         rootCause,
         suggestedFix,
-        testCases,
         affectedModule,
         relatedStory,
         priority = 'Medium',
@@ -71,8 +70,6 @@ ${rootCause}
 *Suggested Fix:*
 ${suggestedFix}
 
-*Test Cases:*
-${testCases}
 
 *Affected Module:*
 ${affectedModule}
