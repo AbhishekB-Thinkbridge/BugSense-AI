@@ -17,7 +17,6 @@ if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && proce
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
-      databaseId: 'bugsenseai'
     });
   }
 
