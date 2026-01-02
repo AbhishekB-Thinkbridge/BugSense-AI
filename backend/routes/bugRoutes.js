@@ -84,6 +84,11 @@ router.post('/submit', upload.fields([
       submittedByEmail
     } = req.body;
 
+    // Use current user's name and email if logged in
+    const currentUser = req.user; // Assuming user info is available in req.user
+    const name = currentUser?.name || submittedBy || 'Anonymous';
+    const email = currentUser?.email || submittedByEmail || null;
+
     // Validate input
     if (!description) {
       return res.status(400).json({ error: 'Bug description is required' });
@@ -110,8 +115,8 @@ router.post('/submit', upload.fields([
       description,
       logs: logs || null,
       relatedStoryKey: relatedStoryKey || null,
-      submittedBy: submittedBy || 'Anonymous',
-      submittedByEmail: submittedByEmail || null,
+      submittedBy: name,
+      submittedByEmail: email,
       status: 'uploading',
       createdAt: new Date().toISOString(),
       userStoryContext
@@ -210,7 +215,7 @@ async function analyzeBugAsync(bugId, bugData) {
     });
 
     // Step 2: Generate test cases
-    const testCases = await llmService.generateTestCases(analysis);
+    // Removed test case generation logic
 
     // Step 3: Find potential assignees
     const potentialAssignees = await jiraService.getPotentialAssignees(
@@ -230,7 +235,6 @@ async function analyzeBugAsync(bugId, bugData) {
         reproductionSteps: analysis.reproductionSteps,
         rootCause: analysis.rootCause,
         suggestedFix: analysis.suggestedFix,
-        testCases: testCases,
         affectedModule: analysis.affectedModule,
         relatedStory: userStoryContext?.key,
         priority: analysis.priority,
@@ -250,7 +254,6 @@ async function analyzeBugAsync(bugId, bugData) {
     await db.collection('bugs').doc(bugId).update({
       status: 'completed',
       analysis,
-      testCases,
       jiraTicket,
       suggestedAssignee,
       potentialAssignees,
@@ -307,6 +310,7 @@ router.get('/:id', async (req, res) => {
 
     res.json({
       id: bugDoc.id,
+      isExisting: true, // Indicate that the bug already exists
       ...bugDoc.data()
     });
 

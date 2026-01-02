@@ -9,6 +9,15 @@ const api = axios.create({
   }
 });
 
+// Add interceptor to include Firebase authentication token
+api.interceptors.request.use(async (config) => {
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (currentUser?.token) {
+    config.headers.Authorization = `Bearer ${currentUser.token}`;
+  }
+  return config;
+});
+
 // Bug API
 export const bugAPI = {
   submitBug: async (bugData) => {
