@@ -2,7 +2,7 @@ import { BugAntIcon } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 import { auth, db } from '../config/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function SignUp() {
@@ -19,18 +19,23 @@ export default function SignUp() {
     setLoading(true);
     setError('');
     try {
+      // Create user authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // Store user info in Firestore
-      await setDoc(doc(collection(db, 'users'), user.uid), {
+      
+      // Store user info in Firestore using doc reference directly
+      await setDoc(doc(db, 'users', user.uid), {
         firstName,
         lastName,
         email,
         createdAt: new Date().toISOString()
       });
+
+      // Navigate to dashboard after successful signup and Firestore write
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      console.error('Signup error:', err);
+      setError(err.message || 'An error occurred during signup');
     } finally {
       setLoading(false);
     }
@@ -83,7 +88,7 @@ export default function SignUp() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-500 text-gray-900 py-3 rounded-lg font-semibold text-lg shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-300"
+            className="w-full bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-500 text-gray-900 py-3 rounded-lg font-semibold text-lg shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Signing Up...' : 'Sign Up'}
           </button>
