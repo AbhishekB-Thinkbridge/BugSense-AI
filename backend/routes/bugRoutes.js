@@ -221,57 +221,25 @@ async function analyzeBugAsync(bugId, bugData) {
       ? potentialAssignees[0].name 
       : null;
 
-    // Step 4: Create JIRA ticket (optional - graceful failure)
-    let jiraTicket = null;
-    try {
-      jiraTicket = await jiraService.createBugTicket({
-        summary: analysis.summary,
-        description: description,
-        reproductionSteps: analysis.reproductionSteps,
-        rootCause: analysis.rootCause,
-        suggestedFix: analysis.suggestedFix,
-        testCases: testCases,
-        affectedModule: analysis.affectedModule,
-        relatedStory: userStoryContext?.key,
-        priority: analysis.priority,
-        assignee: suggestedAssignee
-      });
-      console.log(`✅ JIRA ticket created: ${jiraTicket.key}`);
-    } catch (jiraError) {
-      console.error('⚠️  JIRA ticket creation failed:', jiraError.message);
-      // Continue without JIRA ticket - analysis is still valuable
-      jiraTicket = {
-        error: jiraError.message,
-        note: 'JIRA ticket could not be created. Check JIRA permissions.'
-      };
-    }
-
-    // Step 5: Update Firebase record
+    // Step 4: Update Firebase record (NO automatic JIRA ticket creation)
     await db.collection('bugs').doc(bugId).update({
-      status: 'completed',
+      status: 'pending_review',  // Changed from 'completed' to 'pending_review'
       analysis,
       testCases,
-      jiraTicket,
       suggestedAssignee,
       potentialAssignees,
-      completedAt: new Date().toISOString()
+      analyzedAt: new Date().toISOString()
     });
 
-    // Step 6: Send notifications
+    // Step 5: Send notification (analysis ready for review)
     if (submittedByEmail) {
       await emailService.sendAnalysisCompleteNotification(
         submittedByEmail,
-        { summary: analysis.summary, jiraTicket }
+        { summary: analysis.summary }
       );
     }
 
-    // Send email to assignee if available
-    if (suggestedAssignee) {
-      // You'll need to fetch assignee email from JIRA or your system
-      // await emailService.sendTicketCreatedNotification(jiraTicket, assigneeEmail);
-    }
-
-    console.log(`✅ Bug ${bugId} analyzed and ticket ${jiraTicket.key} created`);
+    console.log(`✅ Bug ${bugId} analyzed and ready for QA review`);
 
   } catch (error) {
     console.error('Error in async bug analysis:', error);
@@ -313,6 +281,124 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching bug:', error);
     res.status(500).json({ error: 'Failed to fetch bug' });
+  }
+});
+
+/**
+ * PUT /api/bugs/:id/analysis
+ * Update bug analysis (for QA review/editing)
+ */
+router.put('/:id/analysis', async (req, res) => {
+  try {
+    if (!db) {
+      return res.status(503).json({ 
+        error: 'Database not configured. Please set up Firebase credentials in .env file.' 
+      });
+    }
+
+    const { id } = req.params;
+    const { analysis } = req.body;
+
+    if (!analysis) {
+      return res.status(400).json({ error: 'Analysis data is required' });
+    }
+
+    // Update the analysis in Firestore
+    await db.collection('bugs').doc(id).update({
+      analysis,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      message: 'Analysis updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating analysis:', error);
+    res.status(500).json({ error: 'Failed to update analysis' });
+  }
+});
+
+/**
+ * POST /api/bugs/:id/create-ticket
+ * Manually create JIRA ticket after QA review
+ */
+router.post('/:id/create-ticket', async (req, res) => {
+  try {
+    if (!db) {
+      return res.status(503).json({ 
+        error: 'Database not configured. Please set up Firebase credentials in .env file.' 
+      });
+    }
+
+    const { id } = req.params;
+    
+    // Get the bug data
+    const bugDoc = await db.collection('bugs').doc(id).get();
+    
+    if (!bugDoc.exists) {
+      return res.status(404).json({ error: 'Bug not found' });
+    }
+
+    const bugData = bugDoc.data();
+
+    // Check if ticket already exists
+    if (bugData.jiraTicket && bugData.jiraTicket.key) {
+      return res.status(400).json({ 
+        error: 'JIRA ticket already exists',
+        jiraTicket: bugData.jiraTicket
+      });
+    }
+
+    // Check if analysis is complete
+    if (!bugData.analysis) {
+      return res.status(400).json({ 
+        error: 'Bug analysis not yet complete. Please wait for analysis to finish.' 
+      });
+    }
+
+    // Create JIRA ticket
+    const jiraTicket = await jiraService.createBugTicket({
+      summary: bugData.analysis.summary,
+      description: bugData.description,
+      reproductionSteps: bugData.analysis.reproductionSteps,
+      rootCause: bugData.analysis.rootCause,
+      suggestedFix: bugData.analysis.suggestedFix,
+      testCases: bugData.testCases || [],
+      affectedModule: bugData.analysis.affectedModule,
+      relatedStory: bugData.userStoryContext?.key,
+      priority: bugData.analysis.priority,
+      assignee: bugData.suggestedAssignee
+    });
+
+    // Update bug record with JIRA ticket info
+    await db.collection('bugs').doc(id).update({
+      jiraTicket,
+      status: 'completed',
+      ticketCreatedAt: new Date().toISOString()
+    });
+
+    console.log(`✅ JIRA ticket created manually: ${jiraTicket.key}`);
+
+    res.json({
+      success: true,
+      jiraTicket,
+      message: `JIRA ticket ${jiraTicket.key} created successfully`
+    });
+
+  } catch (error) {
+    console.error('Error creating JIRA ticket:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    res.status(500).json({ 
+      error: 'Failed to create JIRA ticket',
+      details: error.message
+    });
   }
 });
 

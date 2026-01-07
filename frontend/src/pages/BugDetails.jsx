@@ -52,8 +52,8 @@ export default function BugDetails() {
       const data = await bugAPI.getBug(id);
       setBug(data);
       
-      // Stop polling if completed or failed
-      if (data.status === 'completed' || data.status === 'failed') {
+      // Stop polling if completed, pending_review, or failed
+      if (data.status === 'completed' || data.status === 'pending_review' || data.status === 'failed') {
         setPolling(false);
       }
     } catch (error) {
@@ -64,7 +64,21 @@ export default function BugDetails() {
   };
 
   const handleEdit = () => {
-    setEditedAnalysis({ ...bug.analysis });
+    console.log('Bug analysis:', bug.analysis); // Debug log
+    
+    // Convert arrays to strings for editing
+    const analysisData = {
+      ...bug.analysis,
+      reproductionSteps: Array.isArray(bug.analysis?.reproductionSteps) 
+        ? bug.analysis.reproductionSteps.join('\n')
+        : bug.analysis?.reproductionSteps || '',
+      testCases: Array.isArray(bug.analysis?.testCases)
+        ? bug.analysis.testCases.join('\n')
+        : bug.analysis?.testCases || ''
+    };
+    
+    console.log('Edited analysis will be:', analysisData); // Debug log
+    setEditedAnalysis(analysisData);
     setIsEditing(true);
     setAnalysisReviewed(false);
   };
@@ -77,8 +91,19 @@ export default function BugDetails() {
   const handleSaveAnalysis = async () => {
     setSaving(true);
     try {
-      await bugAPI.updateAnalysis(id, editedAnalysis);
-      setBug({ ...bug, analysis: editedAnalysis });
+      // Convert string fields back to arrays where needed
+      const analysisToSave = {
+        ...editedAnalysis,
+        reproductionSteps: typeof editedAnalysis.reproductionSteps === 'string'
+          ? editedAnalysis.reproductionSteps.split('\n').filter(step => step.trim())
+          : editedAnalysis.reproductionSteps,
+        testCases: typeof editedAnalysis.testCases === 'string'
+          ? editedAnalysis.testCases.split('\n').filter(test => test.trim())
+          : editedAnalysis.testCases
+      };
+      
+      await bugAPI.updateAnalysis(id, analysisToSave);
+      setBug({ ...bug, analysis: analysisToSave });
       setIsEditing(false);
       setAnalysisReviewed(true);
       toast.success('Analysis updated successfully!');
@@ -282,7 +307,19 @@ export default function BugDetails() {
           <div>
             <h3 className="font-semibold text-blue-900">Analysis in Progress</h3>
             <p className="text-blue-800">
-              Our AI is analyzing your bug report and creating a JIRA ticket. This usually takes 30-60 seconds.
+              Our AI is analyzing your bug report. This usually takes 30-60 seconds.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {bug.status === 'pending_review' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6 flex items-center">
+          <ClockIcon className="h-6 w-6 text-yellow-600 mr-3" />
+          <div>
+            <h3 className="font-semibold text-yellow-900">Ready for QA Review</h3>
+            <p className="text-yellow-800">
+              AI analysis is complete. Please review the analysis below, make any necessary edits, and then create the JIRA ticket.
             </p>
           </div>
         </div>
@@ -405,10 +442,10 @@ export default function BugDetails() {
       )}
 
       {/* AI Analysis Results */}
-      {bug.status === 'completed' && bug.analysis && (
+      {(bug.status === 'completed' || bug.status === 'pending_review') && bug.analysis && (
         <>
-          {/* JIRA Ticket */}
-          {bug.jiraTicket && !bug.userStoryContext && (
+          {/* JIRA Ticket (only show if ticket exists) */}
+          {bug.jiraTicket && bug.jiraTicket.key && (
             <div className="bg-green-50 border-2 border-green-300 rounded-xl p-6 mb-6">
               <h2 className="text-xl font-bold text-green-900 mb-4 flex items-center">
                 <CheckCircleIcon className="h-6 w-6 mr-2" />
@@ -444,12 +481,12 @@ export default function BugDetails() {
             </div>
           )}
 
-          {/* Edit/Create Ticket Actions */}
-          {!bug.jiraTicket && (
+          {/* Edit/Create Ticket Actions (only show if no ticket exists yet) */}
+          {(!bug.jiraTicket || !bug.jiraTicket.key) && (
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">QA Actions</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">QA Review & Actions</h3>
                   <p className="text-sm text-gray-600 mt-1">
                     Review the AI analysis below, make edits if needed, then create a JIRA ticket
                   </p>
@@ -466,7 +503,7 @@ export default function BugDetails() {
                       </button>
                       <button
                         onClick={handleCreateTicket}
-                        disabled={creatingTicket || !analysisReviewed}
+                        disabled={creatingTicket}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center gap-2"
                       >
                         <CheckIcon className="h-5 w-5" />
@@ -531,10 +568,11 @@ export default function BugDetails() {
               <h3 className="text-lg font-semibold text-gray-700 mb-2">Summary</h3>
               {isEditing ? (
                 <textarea
-                  value={editedAnalysis.summary}
+                  value={editedAnalysis?.summary || ''}
                   onChange={(e) => handleFieldChange('summary', e.target.value)}
                   rows="3"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg"
+                  placeholder="Enter summary..."
                 />
               ) : (
                 <p className="text-lg text-gray-900">{bug.analysis.summary}</p>
@@ -542,9 +580,9 @@ export default function BugDetails() {
             </div>
             
             <div className="flex gap-3 mb-6">
-              <PriorityBadge priority={isEditing ? editedAnalysis.priority : bug.analysis.priority} />
+              <PriorityBadge priority={isEditing ? (editedAnalysis?.priority || 'Medium') : bug.analysis.priority} />
               <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
-                {isEditing ? editedAnalysis.severity : bug.analysis.severity}
+                {isEditing ? (editedAnalysis?.severity || 'Medium') : bug.analysis.severity}
               </span>
             </div>
 
@@ -558,13 +596,24 @@ export default function BugDetails() {
                 </h3>
                 {isEditing ? (
                   <textarea
-                    value={editedAnalysis.reproductionSteps}
+                    value={editedAnalysis?.reproductionSteps || ''}
                     onChange={(e) => handleFieldChange('reproductionSteps', e.target.value)}
-                    rows="4"
+                    rows="6"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Enter each step on a new line..."
                   />
                 ) : (
-                  <p className="text-gray-900 whitespace-pre-wrap">{bug.analysis.reproductionSteps}</p>
+                  <div className="text-gray-900">
+                    {Array.isArray(bug.analysis.reproductionSteps) ? (
+                      <ol className="list-decimal list-inside space-y-1">
+                        {bug.analysis.reproductionSteps.map((step, idx) => (
+                          <li key={idx}>{step}</li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{bug.analysis.reproductionSteps}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -576,7 +625,7 @@ export default function BugDetails() {
                 </h3>
                 {isEditing ? (
                   <textarea
-                    value={editedAnalysis.rootCause}
+                    value={editedAnalysis?.rootCause || ''}
                     onChange={(e) => handleFieldChange('rootCause', e.target.value)}
                     rows="4"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -594,7 +643,7 @@ export default function BugDetails() {
                 </h3>
                 {isEditing ? (
                   <textarea
-                    value={editedAnalysis.suggestedFix}
+                    value={editedAnalysis?.suggestedFix || ''}
                     onChange={(e) => handleFieldChange('suggestedFix', e.target.value)}
                     rows="4"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -610,7 +659,7 @@ export default function BugDetails() {
                 {isEditing ? (
                   <input
                     type="text"
-                    value={editedAnalysis.affectedModule}
+                    value={editedAnalysis?.affectedModule || ''}
                     onChange={(e) => handleFieldChange('affectedModule', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
@@ -661,6 +710,7 @@ export default function BugDetails() {
 function StatusBadge({ status }) {
   const config = {
     analyzing: { color: 'blue', icon: ArrowPathIcon, text: 'Analyzing' },
+    pending_review: { color: 'yellow', icon: ClockIcon, text: 'Pending QA Review' },
     completed: { color: 'green', icon: CheckCircleIcon, text: 'Completed' },
     failed: { color: 'red', icon: ExclamationCircleIcon, text: 'Failed' }
   };

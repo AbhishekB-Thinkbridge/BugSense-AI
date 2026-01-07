@@ -110,6 +110,11 @@ function BugCard({ bug }) {
       color: 'blue',
       text: 'Analyzing'
     },
+    pending_review: {
+      icon: ClockIcon,
+      color: 'yellow',
+      text: 'Pending QA Review'
+    },
     completed: {
       icon: CheckCircleIcon,
       color: 'green',

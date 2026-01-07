@@ -94,16 +94,20 @@ ${relatedStory ? `*Related Story:* ${relatedStory}` : ''}
         }
       };
 
-      // Add assignee if provided
+      // Add assignee if provided (wrap in try-catch to avoid failures)
       if (assignee) {
-        newIssue.fields.assignee = { name: assignee };
+        try {
+          newIssue.fields.assignee = { name: assignee };
+        } catch (err) {
+          console.warn('Could not set assignee:', err.message);
+        }
       }
 
-      // Add related story link if provided
-      if (relatedStory) {
-        newIssue.fields.customfield_10001 = relatedStory; // Adjust field ID
-      }
+      // Note: Removed customfield_10001 as it may cause team-related errors
+      // If you need to link to a related story, configure the correct custom field ID
+      // in your JIRA instance and update this section
 
+      console.log('Creating JIRA issue with fields:', JSON.stringify(newIssue, null, 2));
       const createdIssue = await jira.addNewIssue(newIssue);
       
       return {
