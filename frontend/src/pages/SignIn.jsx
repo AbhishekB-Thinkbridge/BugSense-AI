@@ -73,9 +73,6 @@ export default function SignIn() {
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
-        <p className="mt-6 text-center text-sm text-gray-300">
-          Don't have an account? <Link to="/signup" className="text-yellow-400 hover:underline font-semibold">Sign Up</Link>
-        </p>
       </div>
       <style>{`
         .animate-fade-in-down {

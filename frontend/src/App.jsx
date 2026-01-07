@@ -9,12 +9,11 @@ import SubmitBug from './pages/SubmitBug';
 import BugDetails from './pages/BugDetails';
 import Dashboard from './pages/Dashboard';
 import SignIn from './pages/SignIn';
-import SignUp from './pages/SignUp';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppContent() {
   const location = useLocation();
-  const hideHeader = location.pathname === '/signin' || location.pathname === '/signup';
+  const hideHeader = location.pathname === '/signin';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -22,7 +21,6 @@ function AppContent() {
       <main className="container mx-auto px-4 py-8">
         <Routes>
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
           <Route
             path="/"
             element={

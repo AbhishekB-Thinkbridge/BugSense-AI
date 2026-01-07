@@ -66,15 +66,21 @@ export default function BugDetails() {
   const handleEdit = () => {
     console.log('Bug analysis:', bug.analysis); // Debug log
     
-    // Convert arrays to strings for editing
+    // Convert arrays to strings for editing and ensure all fields are included
     const analysisData = {
-      ...bug.analysis,
+      summary: bug.analysis?.summary || '',
+      priority: bug.analysis?.priority || 'Medium',
+      severity: bug.analysis?.severity || 'Medium',
       reproductionSteps: Array.isArray(bug.analysis?.reproductionSteps) 
         ? bug.analysis.reproductionSteps.join('\n')
         : bug.analysis?.reproductionSteps || '',
+      rootCause: bug.analysis?.rootCause || '',
+      suggestedFix: bug.analysis?.suggestedFix || '',
+      affectedModule: bug.analysis?.affectedModule || '',
       testCases: Array.isArray(bug.analysis?.testCases)
         ? bug.analysis.testCases.join('\n')
-        : bug.analysis?.testCases || ''
+        : bug.analysis?.testCases || '',
+      visualAnalysis: bug.analysis?.visualAnalysis || ''
     };
     
     console.log('Edited analysis will be:', analysisData); // Debug log
@@ -568,10 +574,10 @@ export default function BugDetails() {
               <h3 className="text-lg font-semibold text-gray-700 mb-2">Summary</h3>
               {isEditing ? (
                 <textarea
-                  value={editedAnalysis?.summary || ''}
+                  value={editedAnalysis?.summary ?? bug.analysis?.summary ?? ''}
                   onChange={(e) => handleFieldChange('summary', e.target.value)}
                   rows="3"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg text-gray-900 bg-white"
                   placeholder="Enter summary..."
                 />
               ) : (
@@ -580,10 +586,22 @@ export default function BugDetails() {
             </div>
             
             <div className="flex gap-3 mb-6">
-              <PriorityBadge priority={isEditing ? (editedAnalysis?.priority || 'Medium') : bug.analysis.priority} />
-              <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
-                {isEditing ? (editedAnalysis?.severity || 'Medium') : bug.analysis.severity}
-              </span>
+              {isEditing ? (
+                <select
+                  value={editedAnalysis?.severity ?? bug.analysis?.severity ?? 'Medium'}
+                  onChange={(e) => handleFieldChange('severity', e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm font-medium focus:ring-2 focus:ring-primary-500 text-gray-900 bg-white"
+                >
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              ) : (
+                <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                  {bug.analysis.severity}
+                </span>
+              )}
             </div>
 
             {/* Include other analysis details in the downloadable section */}
@@ -596,10 +614,10 @@ export default function BugDetails() {
                 </h3>
                 {isEditing ? (
                   <textarea
-                    value={editedAnalysis?.reproductionSteps || ''}
+                    value={editedAnalysis?.reproductionSteps ?? (Array.isArray(bug.analysis?.reproductionSteps) ? bug.analysis.reproductionSteps.join('\n') : bug.analysis?.reproductionSteps ?? '')}
                     onChange={(e) => handleFieldChange('reproductionSteps', e.target.value)}
                     rows="6"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
                     placeholder="Enter each step on a new line..."
                   />
                 ) : (
@@ -625,10 +643,10 @@ export default function BugDetails() {
                 </h3>
                 {isEditing ? (
                   <textarea
-                    value={editedAnalysis?.rootCause || ''}
+                    value={editedAnalysis?.rootCause ?? bug.analysis?.rootCause ?? ''}
                     onChange={(e) => handleFieldChange('rootCause', e.target.value)}
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
                   />
                 ) : (
                   <p className="text-gray-900 whitespace-pre-wrap">{bug.analysis.rootCause}</p>
@@ -643,10 +661,10 @@ export default function BugDetails() {
                 </h3>
                 {isEditing ? (
                   <textarea
-                    value={editedAnalysis?.suggestedFix || ''}
+                    value={editedAnalysis?.suggestedFix ?? bug.analysis?.suggestedFix ?? ''}
                     onChange={(e) => handleFieldChange('suggestedFix', e.target.value)}
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
                   />
                 ) : (
                   <p className="text-gray-900 whitespace-pre-wrap">{bug.analysis.suggestedFix}</p>
@@ -659,9 +677,9 @@ export default function BugDetails() {
                 {isEditing ? (
                   <input
                     type="text"
-                    value={editedAnalysis?.affectedModule || ''}
+                    value={editedAnalysis?.affectedModule ?? bug.analysis?.affectedModule ?? ''}
                     onChange={(e) => handleFieldChange('affectedModule', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
                   />
                 ) : (
                   <span className="inline-block px-4 py-2 bg-primary-100 text-primary-900 rounded-lg font-semibold">
