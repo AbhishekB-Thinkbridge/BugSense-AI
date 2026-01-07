@@ -23,13 +23,21 @@ export default function SignUp() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      console.log('User created in Auth:', user.uid);
+      
       // Store user info in Firestore using doc reference directly
-      await setDoc(doc(db, 'users', user.uid), {
-        firstName,
-        lastName,
-        email,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          firstName,
+          lastName,
+          email,
+          createdAt: new Date().toISOString()
+        });
+        console.log('User data saved to Firestore successfully');
+      } catch (firestoreError) {
+        console.error('Firestore error:', firestoreError);
+        throw new Error(`Failed to save user data: ${firestoreError.message}`);
+      }
 
       // Navigate to dashboard after successful signup and Firestore write
       navigate('/dashboard');
